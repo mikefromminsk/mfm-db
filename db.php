@@ -1,58 +1,47 @@
 <?php
 error_reporting(1);
-header("Content-type: application/json; charset=utf-8");
-$GLOBALS["properties"] = parse_ini_file("properties.php");
 
-if ($GLOBALS["properties"] == null)
-    die("create properties.php file"
-        . "<?php\n"
-        . "db_host=\"xxxx\"\n"
-        . "db_user=\"xxxx\"\n"
-        . "db_pass=\"xxxx\"\n"
-        . "db_name=\"xxxx\"\n");
+header("Content-type: application/json;charset=utf-8");
 
-$mysql_conn = $GLOBALS["conn"];
+if ($db_name == null || $db_user == null || $db_pass == null)
+    include_once "properties.php";
+
+if ($db_name == null || $db_user == null || $db_pass == null)
+    die(json_encode(array("message" => "Create properties.php with database connection parameters")));
+
+$mysql_conn = isset($GLOBALS["conn"]) ? $GLOBALS["conn"] : null;
 if ($mysql_conn == null)
-    $mysql_conn = new mysqli(
-        $GLOBALS["properties"]["db_host"],
-        $GLOBALS["properties"]["db_user"],
-        $GLOBALS["properties"]["db_pass"],
-        $GLOBALS["properties"]["db_name"]);
+    $mysql_conn = new mysqli("localhost", $db_user, $db_pass, $db_name); // change localhost to $host_name
 
 if ($mysql_conn->connect_error)
     die("Connection failed: " . $mysql_conn->connect_error . " check properties.php file");
 
 $mysql_conn->set_charset("utf8");
 $GLOBALS["conn"] = $mysql_conn;
-function get($param_name, $def_value = null)
-{
-    $param_value = $_GET[$param_name];
-    if ($param_value === null)
-        $param_value = $_POST[$param_name];
-    if ($param_value === null)
-        $param_value = $_SESSION[$param_name];
-    if ($param_value === null)
-        $param_value = $_COOKIE[$param_name];
-    if (strpos($param_value, '\'') == true)
-        return null;
-    if ($param_value === null)
-        return $def_value;
-    return $param_value;
-}
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+$host_name = $host_name ?: $_SERVER['HTTP_HOST'];
+$base_url = ($_SERVER['HTTPS'] == "on" ? "https://" : "http://") . $host_name;
+
+if ($_SERVER["CONTENT_TYPE"] != 'application/x-www-form-urlencoded'
+    && ($_SERVER['REQUEST_METHOD'] == 'POST' || $_SERVER['REQUEST_METHOD'] == 'PUT')) {
     $inputJSON = file_get_contents('php://input');
     $inputParams = json_decode($inputJSON, true);
+    //file_put_contents("sef", $inputParams);
     foreach ($inputParams as $key => $value)
         $_POST[$key] = $value;
 }
+
+// delete all usages of query !!!! rename to query without delete
 function query($sql, $show_query = false)
 {
     if ($show_query)
-        echo $sql;
-    $success = $GLOBALS["conn"]->query($sql);
-    if (!$success)
-        db_error(ERROR_MYSQL, mysqli_error($GLOBALS["conn"]));
+        error($sql);
+    $success = false;
+    if ($_GET["help"] !== null) {
+        $success = $GLOBALS["conn"]->query($sql);
+        if (!$success)
+            error(mysqli_error($GLOBALS["conn"]));
+    }
     return $success;
 }
 
@@ -69,6 +58,24 @@ function select($sql, $show_query = false)
     return null;
 }
 
+function scalar($sql, $show_query = false)
+{
+    $rows = select($sql, $show_query);
+    if (count($rows) > 0)
+        return array_shift($rows[0]);
+    else
+        return null;
+}
+
+function selectMapList($sql, $column, $show_query = false)
+{
+    $table = select($sql, $show_query);
+    $res = array();
+    foreach ($table as $row)
+        $res[$row[$column]][] = $row;
+    return $res;
+}
+
 function selectList($sql, $show_query = false)
 {
     $result = query($sql, $show_query);
@@ -82,7 +89,7 @@ function selectList($sql, $show_query = false)
     return null;
 }
 
-function selectMap($sql, $show_query = false)
+function selectRow($sql, $show_query = false)
 {
     $result = select($sql, $show_query);
     if ($result != null)
@@ -90,13 +97,29 @@ function selectMap($sql, $show_query = false)
     return null;
 }
 
-function scalar($sql, $show_query = false)
+function arrayToWhere($where)
 {
-    $rows = select($sql, $show_query);
-    if (count($rows) > 0)
-        return array_shift($rows[0]);
-    else
-        return null;
+    if ($where == null || sizeof($where) == 0) return "";
+    $sql = " where ";
+    foreach ($where as $param_name => $param_value)
+        $sql .= is_double($param_name) ? $param_value :
+            ($param_name . (is_null($param_value) ? " is null" : " = " . (is_double($param_value) ? $param_value : "'" . uencode($param_value) . "'"))) . " and ";
+    return rtrim($sql, " and ");
+}
+
+function scalarWhere($table, $field, $where, $show_query = false)
+{
+    return scalar("select $field from $table " . arrayToWhere($where), $show_query);
+}
+
+function selectWhere($table, $where, $show_query = false)
+{
+    return select("select * from $table " . arrayToWhere($where), $show_query);
+}
+
+function selectRowWhere($table, $where, $show_query = false)
+{
+    return selectRow("select * from $table " . arrayToWhere($where), $show_query);
 }
 
 function table_exist($table_name)
@@ -104,62 +127,113 @@ function table_exist($table_name)
     return scalar("show tables like '$table_name'") != null;
 }
 
-define("ERROR_PARAMS_IS_NO_SET", 0);
-define("ERROR_DUPLICATE_REQUEST", 1);
-define("USER_ERROR", 2);
-define("ERROR_MYSQL", 3);
-define("ERROR_TOKEN_IS_BAD", 4);
-function db_error($error_code, $error_message = "")
+function error($error_message)
 {
-    $result["error_code"] = $error_code;
-    $result["error_message"] = $error_message;
-    $result["error_stack"] = generateCallTrace();
-    echo json_encode_readable($result);
-    exit;
+    $result["message"] = $error_message;
+    $stack = generateCallTrace();
+    if ($stack != null)
+        $result["stack"] = $stack;
+    http_response_code(500); // INTERNAL SERVER ERROR
+    die(json_encode_readable($result));
 }
 
-function get_string($param_name, $def_value = null)
+function array_to_map($array, $key)
 {
-    return (get($param_name, $def_value) !== null ? "" . (get($param_name, $def_value)) : null);
+    $map = array();
+    foreach ($array as $item)
+        $map[$item[$key]] = $item;
+    return $map;
 }
 
-function get_int($param_name, $def_value = null)
+function uencode($param_value)
 {
-    return (get($param_name, $def_value) !== null ? doubleval(get($param_name, $def_value)) : null);
+    return mysqli_real_escape_string($GLOBALS["conn"], $param_value);
 }
 
-function get_int_array($param_name)
+function get($param_name, $default, $description)
 {
-    $arr = get($param_name);
-    return $arr != null ? explode(",", $arr) : null;
-}
-
-function get_double($param_name, $def_value = null)
-{
-    return (get($param_name, $def_value) !== null ? doubleval(get($param_name, $def_value)) : null);
-}
-
-function get_requared($param_name)
-{
-    $param_value = get($param_name);
+    if ($_GET["help"] !== null) {
+        $GLOBALS["params"][$param_name]["name"] = $param_name;
+        $GLOBALS["params"][$param_name]["type"] = "string";
+        $GLOBALS["params"][$param_name]["required"] = false;
+        $GLOBALS["params"][$param_name]["default"] = $default;
+        $GLOBALS["params"][$param_name]["description"] = $description;
+    }
+    // TODO add test on sql
+    $param_value = null;
+    if (isset($_GET[$param_name]))
+        $param_value = $_GET[$param_name];
+    if ($param_value === null && isset($_POST[$param_name]))
+        $param_value = $_POST[$param_name];
+    if ($param_value === null && isset($_SESSION[$param_name]))
+        $param_value = $_SESSION[$param_name];
+    if ($param_value === null && isset($_COOKIE[$param_name]))
+        $param_value = $_COOKIE[$param_name];
+    if ($param_value === null && isset($_FILES[$param_name]))
+        $param_value = $_FILES[$param_name];
+    if ($param_value === null && isset(getallheaders()[$param_name]))
+        $param_value = getallheaders()[$param_name];
     if ($param_value === null)
-        db_error(ERROR_PARAMS_IS_NO_SET, $param_name . " is empty");
+        return $default;
     return $param_value;
 }
 
-function get_int_requared($param_name)
+function get_string($param_name, $default = null, $description = null)
 {
-    return doubleval(get_requared($param_name));
+    return get($param_name, $default, $description);
 }
 
-function get_double_requared($param_name)
+function get_int($param_name, $default = null, $description = null)
 {
-    return doubleval(get_requared($param_name));
+    $param_value = get($param_name, $default, $description);
+    if ($_GET["help"] !== null) {
+        $GLOBALS["params"][$param_name]["type"] = "int";
+        return null;
+    } else {
+        if ($param_value == null)
+            return null;
+        if (!is_numeric($param_value))
+            error("$param_name must be int");
+        return doubleval($param_value);
+    }
 }
 
-function get_string_requared($param_name)
+function get_int_array($param_name, $default = null, $description = null)
 {
-    return get_requared($param_name);
+    if ($_GET["help"] !== null)
+        $GLOBALS["params"][$param_name]["type"] = "int_array";
+    $arr = get($param_name, $default, $description);
+    return $arr != null ? explode(",", $arr) : null;
+}
+
+function get_required($param_name, $default = null, $description = null)
+{
+    $param_value = get($param_name, $default, $description);
+    if ($_GET["help"] !== null) {
+        $GLOBALS["params"][$param_name]["required"] = true;
+        return null;
+    } else {
+        if ($param_value === null)
+            error("$param_name is empty");
+        return $param_value;
+    }
+}
+
+function get_int_required($param_name, $default = null, $description = null)
+{
+    $param_value = get_int($param_name, $default, $description);
+    if ($_GET["help"] !== null) {
+        $GLOBALS["params"][$param_name]["required"] = true;
+        return null;
+    } else {
+        if ($param_value === null)
+            error("$param_name is empty");
+    }
+}
+
+function get_string_required($param_name, $default = null, $description = null)
+{
+    return get_required($param_name, $default, $description);
 }
 
 function insert($sql, $show_query = null)
@@ -167,44 +241,42 @@ function insert($sql, $show_query = null)
     return query($sql, $show_query);
 }
 
-function insertList($table_name, $params, $show_query = false)
+function get_last_insert_id()
 {
-    $params = array_filter($params, function ($value) {
-        return $value !== null;
-    });
-    foreach ($params as $param_name => $param_value)
-        if (is_string($param_value) && $param_value != "unix_timestamp()")
-            $params[$param_name] = "'" . mysqli_real_escape_string($GLOBALS["conn"], $param_value) . "'";
-    $insert_query = "insert into $table_name (" . implode(",", array_keys($params)) . ") values (" . implode(",", array_values($params)) . ")";
-    return insert($insert_query, $show_query);
+    return mysqli_insert_id($GLOBALS["conn"]);
 }
 
 function update($sql, $show_query = null)
 {
-    return query($sql, $show_query);
+    query($sql, $show_query);
+    return $GLOBALS["conn"]->affected_rows > 0;
 }
 
-function updateList($table_name, $params, $primary_key, $primary_value, $show_query = false)
+//rename to insertMap
+function insertRow($table_name, $params, $show_query = false)
 {
-    $params = array_filter($params, function ($value) {
-        return $value !== null;
-    });
-    $update_params = "";
+    $insert_params = "";
     foreach ($params as $param_name => $param_value)
-        if (is_string($param_value) && $param_value != "unix_timestamp()" && $param_value != "$param_name + 1")
-            $update_params .= "$param_name = '$param_value', ";
-        else
-            $update_params .= "$param_name = $param_value, ";
-    $update_params = rtrim($update_params, ", ");
-    $update_query = "update $table_name set $update_params ";
-    if (is_array($primary_value))
-        $update_query .= " where $primary_key  in ('" . implode("','", $primary_value) . "')";
-    else
-        $update_query .= " where $primary_key = " . (is_string($primary_value) ? "'$primary_value'" : $primary_value);
-    if ($update_params != "") {
-        return update($update_query, $show_query);
-    } else
-        return null;
+        $insert_params .= (is_double($param_value) ? $param_value : (is_null($param_value) ? "null" : "'" . uencode($param_value) . "'")) . ", ";
+    $insert_params = rtrim($insert_params, ", "); // !!! CHAR LSIT
+    return insert("insert into $table_name (" . implode(",", array_keys($params)) . ") values ($insert_params)", $show_query);
+}
+
+function insertRowAndGetId($table_name, $params, $show_query = false)
+{
+    $success = insertRow($table_name, $params, $show_query);
+    if ($success)
+        return get_last_insert_id();
+    return null;
+}
+
+function updateWhere($table_name, $set_params, $where, $show_query = false)
+{
+    $set_params_string = "";
+    foreach ($set_params as $param_name => $param_value)
+        $set_params_string .= (is_double($param_name) ? $param_value : " $param_name = " . (is_numeric($param_value) ? $param_value : (is_null($param_value) ? "null" : "'" . uencode($param_value) . "'"))) . ", ";
+    $set_params_string = rtrim($set_params_string, ", "); // !!! CHAR LSIT
+    return update("update $table_name set $set_params_string " . arrayToWhere($where), $show_query);
 }
 
 function object_properties_to_number(&$object)
@@ -212,11 +284,11 @@ function object_properties_to_number(&$object)
     if (is_object($object) || is_array($object))
         foreach ($object as &$property)
             object_properties_to_number($property);
-    if (is_string($object) && is_numeric($object))
+    if (is_string($object) && is_doublee($object))
         $object = doubleval($object);
 }
 
-function json_encode_readable($result)
+function json_encode_readable(&$result)
 {
     //object_properties_to_number($result);
     $json = json_encode($result, JSON_UNESCAPED_UNICODE);
@@ -327,7 +399,7 @@ function random_key($table_name, $key_name)
     return $random_key_id;
 }
 
-function http_json_post($url, $fields)
+function http_json_put($url, $fields)
 {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
@@ -340,24 +412,83 @@ function http_json_post($url, $fields)
     return json_decode($result, true);
 }
 
-function http_json_get($url)
+function to_utf8($mixed)
 {
+    if (is_array($mixed)) {
+        foreach ($mixed as $key => $value)
+            $mixed[$key] = to_utf8($value);
+    } elseif (is_string($mixed)) {
+        return mb_convert_encoding($mixed, 'UTF-8', 'ISO-8859-1');
+    }
+    return $mixed;
+}
+
+function http_post($url, $data, $headers = array())
+{
+    if (strpos($url, "http://") === 0)
+        $url = "http://" . $url;
+    //if ($uencode)
+    $data = to_utf8($data);
+    $data_string = json_encode($data);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($headers, array(
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($data_string))
+    ));
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return $result;
+}
+
+function http_post_json($url, $data, $headers = array())
+{
+    $result = http_post($url, $data, $headers);
+    return is_string($result) ? json_decode($result, true) : $result;
+}
+
+function http_get($url)
+{
+    if (strpos($url, "http://") === 0)
+        $url = "http://" . $url;
     $ch = curl_init();
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $result = curl_exec($ch);
     curl_close($ch);
-    return json_decode($result, true);
+    return $result;
 }
 
-function redirect($url, $params = array())
+function http_get_json($url)
 {
-    $redirect_script = '<html><body><form id="redirect" action="' . $url . '" method="post">';
-    foreach ($params as $key => $value)
-        $redirect_script .= '<input type="hidden" name="' . htmlentities($key) . '" value="' . htmlentities(json_encode($value)) . '">';
-    $redirect_script .= '</form><script>document.getElementById("redirect").submit();</script></body></html>';
-    die($redirect_script);
+    $result = http_get($url);
+    return is_string($result) ? json_decode($result, true) : $result;
+}
+
+function redirect($url, $params = array(), $params_in_url = true)
+{
+    if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+        if ($params_in_url == true) {
+            $url_params = "";
+            foreach ($params as $key => $value)
+                $url_params .= "&" . urlencode($key) . "=" . urlencode($value);
+            if (strpos($url, "?") === false && $url_params != "")
+                $url_params[0] = "?";
+            $url .= $url_params;
+        }
+        $redirect_script = '<html><body><form id="redirect" action="' . $url . '" method="post">';
+        if ($params_in_url == false)
+            foreach ($params as $key => $value)
+                $redirect_script .= '<input type="hidden" name="' . htmlentities($key) . '" value="' . htmlentities(json_encode($value)) . '">';
+        $redirect_script .= '</form><script>document.getElementById("redirect").submit();</script></body></html>';
+        header("Content-type: text/html;charset=utf-8");
+        header("Location: $url");
+        die($redirect_script);
+    }
 }
 
 function array_extend(array $a, array $b)
@@ -370,17 +501,31 @@ function array_extend(array $a, array $b)
     return $a;
 }
 
-function getFiles($dir, &$results = array()){
+function file_list_rec($dir, &$ignore_list, &$results = array())
+{
     $files = scandir($dir);
-
-    foreach($files as $key => $value){
-        $path = realpath($dir.DIRECTORY_SEPARATOR.$value);
-        if(is_file($path)) {
+    foreach ($files as $key => $value) {
+        $path = realpath($dir . "/" . $value);
+        $path = str_replace("\\", "/", $path);
+        $ignore = false;
+        foreach ($ignore_list as $ignore_item)
+            $ignore = $ignore || (strpos($path, $ignore_item) !== false);
+        if ($ignore)
+            continue;
+        if (!is_dir($path)) {
             $results[] = $path;
-        } else if($value != "." && $value != "..") {
-            getFiles($path, $results);
+        } else if ($value != "." && $value != "..") {
+            file_list_rec($path, $ignore_list, $results);
         }
     }
-
     return $results;
+}
+
+function description($title)
+{
+    if ($_GET["help"] !== null) {
+        $_GET["script_title"] = $title;
+        include_once "help.php";
+        die();
+    }
 }
