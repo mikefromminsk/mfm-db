@@ -3,8 +3,7 @@ error_reporting(1);
 
 header("Content-type: application/json;charset=utf-8");
 
-if ($db_name == null || $db_user == null || $db_pass == null)
-    include_once "properties.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/db/properties.php";
 
 if ($db_name == null || $db_user == null || $db_pass == null)
     die(json_encode(array("message" => "Create properties.php with database connection parameters")));
@@ -20,9 +19,10 @@ $mysql_conn->set_charset("utf8");
 $GLOBALS["conn"] = $mysql_conn;
 
 $host_name = $host_name ?: $_SERVER['HTTP_HOST'];
-$base_url = ($_SERVER['HTTPS'] == "on" ? "https://" : "http://") . $host_name;
 
-if ($_SERVER["CONTENT_TYPE"] != 'application/x-www-form-urlencoded'
+// TODO  is_numeric =>      is_numeric($result) && !is_string($result)
+
+if (isset($_SERVER["CONTENT_TYPE"]) && $_SERVER["CONTENT_TYPE"] != 'application/x-www-form-urlencoded'
     && ($_SERVER['REQUEST_METHOD'] == 'POST' || $_SERVER['REQUEST_METHOD'] == 'PUT')) {
     $inputJSON = file_get_contents('php://input');
     $inputParams = json_decode($inputJSON, true);
@@ -37,7 +37,7 @@ function query($sql, $show_query = false)
     if ($show_query)
         error($sql);
     $success = false;
-    if ($_GET["help"] !== null) {
+    if (!isset($_GET["help"])) {
         $success = $GLOBALS["conn"]->query($sql);
         if (!$success)
             error(mysqli_error($GLOBALS["conn"]));
@@ -87,6 +87,15 @@ function selectList($sql, $show_query = false)
         return $rows;
     }
     return null;
+}
+
+function selectListWhere($table, $column, $where, $show_query = false)
+{
+    $select = selectWhere($table, $where, $show_query); //!!! TODO optimize
+    $rows = [];
+    foreach ($select as $row)
+        $rows[] = $row[$column];
+    return $rows;
 }
 
 function selectRow($sql, $show_query = false)
@@ -152,7 +161,7 @@ function uencode($param_value)
 
 function get($param_name, $default, $description)
 {
-    if ($_GET["help"] !== null) {
+    if (!isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["name"] = $param_name;
         $GLOBALS["params"][$param_name]["type"] = "string";
         $GLOBALS["params"][$param_name]["required"] = false;
@@ -186,7 +195,7 @@ function get_string($param_name, $default = null, $description = null)
 function get_int($param_name, $default = null, $description = null)
 {
     $param_value = get($param_name, $default, $description);
-    if ($_GET["help"] !== null) {
+    if (!isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["type"] = "int";
         return null;
     } else {
@@ -200,7 +209,7 @@ function get_int($param_name, $default = null, $description = null)
 
 function get_int_array($param_name, $default = null, $description = null)
 {
-    if ($_GET["help"] !== null)
+    if (!isset($_GET["help"]))
         $GLOBALS["params"][$param_name]["type"] = "int_array";
     $arr = get($param_name, $default, $description);
     return $arr != null ? explode(",", $arr) : null;
@@ -209,7 +218,7 @@ function get_int_array($param_name, $default = null, $description = null)
 function get_required($param_name, $default = null, $description = null)
 {
     $param_value = get($param_name, $default, $description);
-    if ($_GET["help"] !== null) {
+    if (!isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["required"] = true;
         return null;
     } else {
@@ -222,7 +231,7 @@ function get_required($param_name, $default = null, $description = null)
 function get_int_required($param_name, $default = null, $description = null)
 {
     $param_value = get_int($param_name, $default, $description);
-    if ($_GET["help"] !== null) {
+    if (!isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["required"] = true;
         return null;
     } else {
@@ -523,7 +532,7 @@ function file_list_rec($dir, &$ignore_list, &$results = array())
 
 function description($title)
 {
-    if ($_GET["help"] !== null) {
+    if (!isset($_GET["help"])) {
         $_GET["script_title"] = $title;
         include_once "help.php";
         die();
