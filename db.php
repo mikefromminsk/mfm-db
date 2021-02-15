@@ -159,7 +159,7 @@ function uencode($param_value)
     return mysqli_real_escape_string($GLOBALS["conn"], $param_value);
 }
 
-function get($param_name, $default, $description)
+function get($param_name, $default = null, $description = null)
 {
     if (!isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["name"] = $param_name;
