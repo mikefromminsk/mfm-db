@@ -36,12 +36,11 @@ function query($sql, $show_query = false)
 {
     if ($show_query)
         error($sql);
-    $success = false;
-    if (!isset($_GET["help"])) {
-        $success = $GLOBALS["conn"]->query($sql);
-        if (!$success)
-            error(mysqli_error($GLOBALS["conn"]));
-    }
+    if (isset($_GET["help"]))
+        error("cannot run sql in help mode");
+    $success = $GLOBALS["conn"]->query($sql);
+    if (!$success)
+        error(mysqli_error($GLOBALS["conn"]));
     return $success;
 }
 
@@ -79,6 +78,7 @@ function selectMapList($sql, $column, $show_query = false)
 function selectList($sql, $show_query = false)
 {
     $result = query($sql, $show_query);
+    echo json_encode($result);
     if ($result->num_rows > 0) {
         $rows = array();
         while ($row = $result->fetch_assoc()) {
@@ -161,7 +161,7 @@ function uencode($param_value)
 
 function get($param_name, $default = null, $description = null)
 {
-    if (!isset($_GET["help"])) {
+    if (isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["name"] = $param_name;
         $GLOBALS["params"][$param_name]["type"] = "string";
         $GLOBALS["params"][$param_name]["required"] = false;
@@ -195,7 +195,7 @@ function get_string($param_name, $default = null, $description = null)
 function get_int($param_name, $default = null, $description = null)
 {
     $param_value = get($param_name, $default, $description);
-    if (!isset($_GET["help"])) {
+    if (isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["type"] = "int";
         return null;
     } else {
@@ -209,7 +209,7 @@ function get_int($param_name, $default = null, $description = null)
 
 function get_int_array($param_name, $default = null, $description = null)
 {
-    if (!isset($_GET["help"]))
+    if (isset($_GET["help"]))
         $GLOBALS["params"][$param_name]["type"] = "int_array";
     $arr = get($param_name, $default, $description);
     return $arr != null ? explode(",", $arr) : null;
@@ -218,7 +218,7 @@ function get_int_array($param_name, $default = null, $description = null)
 function get_required($param_name, $default = null, $description = null)
 {
     $param_value = get($param_name, $default, $description);
-    if (!isset($_GET["help"])) {
+    if (isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["required"] = true;
         return null;
     } else {
@@ -231,12 +231,13 @@ function get_required($param_name, $default = null, $description = null)
 function get_int_required($param_name, $default = null, $description = null)
 {
     $param_value = get_int($param_name, $default, $description);
-    if (!isset($_GET["help"])) {
+    if (isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["required"] = true;
         return null;
     } else {
         if ($param_value === null)
             error("$param_name is empty");
+        return $param_value;
     }
 }
 
@@ -440,7 +441,7 @@ function file_list_rec($dir, &$ignore_list, &$results = array())
 
 function description($title)
 {
-    if (!isset($_GET["help"])) {
+    if (isset($_GET["help"])) {
         $_GET["script_title"] = $title;
         include_once "help.php";
         die();
