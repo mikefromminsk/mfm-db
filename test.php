@@ -13,4 +13,11 @@ function assertEquals($message, $val, $need)
     echo "good $message\n";
 }
 
+function assertNotEquals($message, $val, $need)
+{
+    if ($val == null)
+        die("error $message val=$val need=$need");
+    echo "good $message\n";
+}
+
 
