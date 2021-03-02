@@ -138,7 +138,7 @@ function table_exist($table_name)
 
 function error($error_message)
 {
-    $result["message"] = $error_message;
+    $result["error"] = $error_message;
     $stack = generateCallTrace();
     if ($stack != null)
         $result["stack"] = $stack;
@@ -226,6 +226,16 @@ function get_required($param_name, $default = null, $description = null)
             error("$param_name is empty");
         return $param_value;
     }
+}
+
+function get_required_uppercase($param_name, $default = null, $description = null)
+{
+    return strtoupper(get_required($param_name, $default, $description));
+}
+
+function get_required_lowercase($param_name, $default = null, $description = null)
+{
+    return strtolower(get_required($param_name, $default, $description));
 }
 
 function get_int_required($param_name, $default = null, $description = null)
