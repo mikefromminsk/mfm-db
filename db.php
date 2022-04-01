@@ -449,6 +449,18 @@ function file_list_rec($dir, &$ignore_list, &$results = array())
     return $results;
 }
 
+function http_post_json($url, $params = array(), $headers = array())
+{
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge("Content-Type:application/json", $headers));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($result, true);
+}
+
 function description($title)
 {
     if (isset($_GET["help"])) {
