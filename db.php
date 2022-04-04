@@ -36,11 +36,12 @@ function query($sql, $show_query = false)
 {
     if ($show_query)
         error($sql);
-    if (isset($_GET["help"]))
-        error("cannot run sql in help mode");
-    $success = $GLOBALS["conn"]->query($sql);
-    if (!$success)
-        error(mysqli_error($GLOBALS["conn"]));
+    $success = false;
+    if (!isset($_GET["help"])) {
+        $success = $GLOBALS["conn"]->query($sql);
+        if (!$success)
+            error(mysqli_error($GLOBALS["conn"]));
+    }
     return $success;
 }
 
@@ -78,7 +79,6 @@ function selectMapList($sql, $column, $show_query = false)
 function selectList($sql, $show_query = false)
 {
     $result = query($sql, $show_query);
-    echo json_encode($result);
     if ($result->num_rows > 0) {
         $rows = array();
         while ($row = $result->fetch_assoc()) {
@@ -138,7 +138,7 @@ function table_exist($table_name)
 
 function error($error_message)
 {
-    $result["error"] = $error_message;
+    $result["message"] = $error_message;
     $stack = generateCallTrace();
     if ($stack != null)
         $result["stack"] = $stack;
@@ -159,7 +159,7 @@ function uencode($param_value)
     return mysqli_real_escape_string($GLOBALS["conn"], $param_value);
 }
 
-function get($param_name, $default = null, $description = null)
+function get($param_name, $default, $description)
 {
     if (isset($_GET["help"])) {
         $GLOBALS["params"][$param_name]["name"] = $param_name;
@@ -230,12 +230,9 @@ function get_required($param_name, $default = null, $description = null)
 
 function get_required_uppercase($param_name, $default = null, $description = null)
 {
-    return strtoupper(get_required($param_name, $default, $description));
-}
-
-function get_required_lowercase($param_name, $default = null, $description = null)
-{
-    return strtolower(get_required($param_name, $default, $description));
+    $param_value = get_required($param_name, $default, $description);
+    if ($param_value != null)
+        return strtoupper($param_value);
 }
 
 function get_int_required($param_name, $default = null, $description = null)
@@ -419,6 +416,98 @@ function random_key($table_name, $key_name)
     return $random_key_id;
 }
 
+function http_json_put($url, $fields)
+{
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($fields));
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return json_decode($result, true);
+}
+
+function to_utf8($mixed)
+{
+    if (is_array($mixed)) {
+        foreach ($mixed as $key => $value)
+            $mixed[$key] = to_utf8($value);
+    } elseif (is_string($mixed)) {
+        return mb_convert_encoding($mixed, 'UTF-8', 'ISO-8859-1');
+    }
+    return $mixed;
+}
+
+function http_post($url, $data, $headers = array())
+{
+    if (strpos($url, "http://") === 0)
+        $url = "http://" . $url;
+    //if ($uencode)
+    $data = to_utf8($data);
+    $data_string = json_encode($data);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($headers, array(
+            'Content-Type: application/json',
+            'Content-Length: ' . strlen($data_string))
+    ));
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return $result;
+}
+
+function http_post_json($url, $data, $headers = array())
+{
+    $result = http_post($url, $data, $headers);
+    return is_string($result) ? json_decode($result, true) : $result;
+}
+
+function http_get($url)
+{
+    if (strpos($url, "http://") === 0)
+        $url = "http://" . $url;
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $result = curl_exec($ch);
+    curl_close($ch);
+    return $result;
+}
+
+function http_get_json($url)
+{
+    $result = http_get($url);
+    return is_string($result) ? json_decode($result, true) : $result;
+}
+
+function redirect($url, $params = array(), $params_in_url = true)
+{
+    if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+        if ($params_in_url == true) {
+            $url_params = "";
+            foreach ($params as $key => $value)
+                $url_params .= "&" . urlencode($key) . "=" . urlencode($value);
+            if (strpos($url, "?") === false && $url_params != "")
+                $url_params[0] = "?";
+            $url .= $url_params;
+        }
+        $redirect_script = '<html><body><form id="redirect" action="' . $url . '" method="post">';
+        if ($params_in_url == false)
+            foreach ($params as $key => $value)
+                $redirect_script .= '<input type="hidden" name="' . htmlentities($key) . '" value="' . htmlentities(json_encode($value)) . '">';
+        $redirect_script .= '</form><script>document.getElementById("redirect").submit();</script></body></html>';
+        header("Content-type: text/html;charset=utf-8");
+        header("Location: $url");
+        die($redirect_script);
+    }
+}
+
 function array_extend(array $a, array $b)
 {
     foreach ($b as $k => $v)
@@ -449,21 +538,9 @@ function file_list_rec($dir, &$ignore_list, &$results = array())
     return $results;
 }
 
-function http_post_json($url, $params = array(), $headers = array())
-{
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge("Content-Type:application/json", $headers));
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $result = curl_exec($ch);
-    curl_close($ch);
-    return json_decode($result, true);
-}
-
 function description($title)
 {
-    if (isset($_GET["help"])) {
+    if (!isset($_GET["help"])) {
         $_GET["script_title"] = $title;
         include_once "help.php";
         die();
