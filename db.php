@@ -16,6 +16,7 @@ if ($mysql_conn->connect_error)
     die("Connection failed: " . $mysql_conn->connect_error . " check properties.php file");
 
 $mysql_conn->set_charset("utf8");
+$mysql_conn->options(MYSQLI_OPT_INT_AND_FLOAT_NATIVE, true);
 $GLOBALS["conn"] = $mysql_conn;
 
 $host_name = $host_name ?: $_SERVER['HTTP_HOST'];
