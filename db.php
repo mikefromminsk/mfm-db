@@ -113,23 +113,23 @@ function arrayToWhere($where)
     $sql = " where ";
     foreach ($where as $param_name => $param_value)
         $sql .= is_double($param_name) ? $param_value :
-            ($param_name . (is_null($param_value) ? " is null" : " = " . (is_double($param_value) ? $param_value : "'" . uencode($param_value) . "'"))) . " and ";
+            ("`$param_name`" . (is_null($param_value) ? " is null" : " = " . (is_double($param_value) ? $param_value : "'" . uencode($param_value) . "'"))) . " and ";
     return rtrim($sql, " and ");
 }
 
 function scalarWhere($table, $field, $where, $show_query = false)
 {
-    return scalar("select $field from $table " . arrayToWhere($where), $show_query);
+    return scalar("select $field from `$table` " . arrayToWhere($where), $show_query);
 }
 
 function selectWhere($table, $where, $show_query = false)
 {
-    return select("select * from $table " . arrayToWhere($where), $show_query);
+    return select("select * from `$table` " . arrayToWhere($where), $show_query);
 }
 
 function selectRowWhere($table, $where, $show_query = false)
 {
-    return selectRow("select * from $table " . arrayToWhere($where), $show_query);
+    return selectRow("select * from `$table` " . arrayToWhere($where), $show_query);
 }
 
 function table_exist($table_name)
@@ -277,7 +277,7 @@ function insertRow($table_name, $params, $show_query = false)
     foreach ($params as $param_name => $param_value)
         $insert_params .= (is_double($param_value) ? $param_value : (is_null($param_value) ? "null" : "'" . uencode($param_value) . "'")) . ", ";
     $insert_params = rtrim($insert_params, ", "); // !!! CHAR LSIT
-    return insert("insert into $table_name (" . implode(",", array_keys($params)) . ") values ($insert_params)", $show_query);
+    return insert("insert into `$table_name` (`" . implode("`,`", array_keys($params)) . "`) values ($insert_params)", $show_query);
 }
 
 function insertRowAndGetId($table_name, $params, $show_query = false)
@@ -294,7 +294,7 @@ function updateWhere($table_name, $set_params, $where, $show_query = false)
     foreach ($set_params as $param_name => $param_value)
         $set_params_string .= (is_double($param_name) ? $param_value : " $param_name = " . (is_numeric($param_value) ? $param_value : (is_null($param_value) ? "null" : "'" . uencode($param_value) . "'"))) . ", ";
     $set_params_string = rtrim($set_params_string, ", "); // !!! CHAR LSIT
-    return update("update $table_name set $set_params_string " . arrayToWhere($where), $show_query);
+    return update("update `$table_name` set $set_params_string " . arrayToWhere($where), $show_query);
 }
 
 function object_properties_to_number(&$object)
@@ -397,22 +397,22 @@ function generateCallTrace()
     return $result;
 }
 
-function random_id()
+function random_id($length = 11)
 {
     //max mysqk bigint = 20 chars
     //max js int = 16 chars
     //max php double without E = 12 chars
     $random_long = mt_rand(1, 9);
-    for ($i = 0; $i < 11; $i++)
+    for ($i = 0; $i < $length; $i++)
         $random_long .= mt_rand(0, 9);
     return doubleval($random_long);
 }
 
-function random_key($table_name, $key_name)
+function random_key($table_name, $key_name, $length = 11)
 {
     do {
-        $random_key_id = random_id();
-        $key_exist = scalar("select count(*) from $table_name where $key_name = $random_key_id");
+        $random_key_id = random_id($length);
+        $key_exist = scalar("select count(*) from `$table_name` where $key_name = $random_key_id");
     } while ($key_exist != 0);
     return $random_key_id;
 }
