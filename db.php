@@ -292,7 +292,7 @@ function updateWhere($table_name, $set_params, $where, $show_query = false)
 {
     $set_params_string = "";
     foreach ($set_params as $param_name => $param_value)
-        $set_params_string .= (is_double($param_name) ? $param_value : " $param_name = " . (is_numeric($param_value) ? $param_value : (is_null($param_value) ? "null" : "'" . uencode($param_value) . "'"))) . ", ";
+        $set_params_string .= (is_double($param_name) ? $param_value : " `$param_name` = " . (is_numeric($param_value) ? $param_value : (is_null($param_value) ? "null" : "'" . uencode($param_value) . "'"))) . ", ";
     $set_params_string = rtrim($set_params_string, ", "); // !!! CHAR LSIT
     return update("update `$table_name` set $set_params_string " . arrayToWhere($where), $show_query);
 }
