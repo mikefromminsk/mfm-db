@@ -443,7 +443,7 @@ function to_utf8($mixed)
 
 function http_post($url, $data, $headers = array())
 {
-    if (strpos($url, "http://") === 0)
+    //if (strpos($url, "http://") === 0)
         $url = "http://" . $url;
     //if ($uencode)
     $data = to_utf8($data);
@@ -541,7 +541,7 @@ function file_list_rec($dir, &$ignore_list, &$results = array())
 
 function description($title)
 {
-    if (!isset($_GET["help"])) {
+    if (isset($_GET["help"])) {
         $_GET["script_title"] = $title;
         include_once "help.php";
         die();
