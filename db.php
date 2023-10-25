@@ -5,6 +5,7 @@ header("Content-type: application/json;charset=utf-8");
 
 require_once $_SERVER["DOCUMENT_ROOT"] . "/db/properties.php";
 
+// move create mysqli into properties.php
 if ($db_name == null || $db_user == null || $db_pass == null)
     die(json_encode(array("message" => "Create properties.php with database connection parameters")));
 
