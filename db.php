@@ -141,9 +141,11 @@ function table_exist($table_name)
 function error($error_message)
 {
     $result["message"] = $error_message;
-    $stack = generateCallTrace();
-    if ($stack != null)
-        $result["stack"] = $stack;
+    if (DEBUG) {
+        $stack = generateCallTrace();
+        if ($stack != null)
+            $result["stack"] = $stack;
+    }
     http_response_code(500); // INTERNAL SERVER ERROR
     die(json_encode_readable($result));
 }
@@ -228,6 +230,22 @@ function get_required($param_name, $default = null, $description = null)
             error("$param_name is empty");
         return $param_value;
     }
+}
+
+function get_path($param_name, $default = null, $description = null)
+{
+    $path = get_string($param_name, $default, $description);
+    if ($path != null)
+        $path = trim($path, "/");
+    return $path;
+}
+
+function get_path_required($param_name, $default = null, $description = null)
+{
+    $path = get_path($param_name, $default, $description);
+    if ($path === null)
+        error("$param_name is empty");
+    return $path;
 }
 
 function get_required_uppercase($param_name, $default = null, $description = null)
@@ -445,7 +463,7 @@ function to_utf8($mixed)
 function http_post($url, $data, $headers = array())
 {
     //if (strpos($url, "http://") === 0)
-        $url = "http://" . $url;
+    $url = "http://" . $url;
     //if ($uencode)
     $data = to_utf8($data);
     $data_string = json_encode($data);

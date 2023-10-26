@@ -8,7 +8,7 @@ if ($scalar != null)
 
 function assertEquals($message, $val, $need)
 {
-    if ($val != $need)
+    if ($val !== $need)
         die("error $message need=$need val=" . json_encode($val));
     echo "good $message\n";
 }
