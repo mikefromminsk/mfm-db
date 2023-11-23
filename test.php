@@ -9,15 +9,13 @@ if ($scalar != null)
 function assertEquals($message, $val, $need = 1)
 {
     if ($val != $need)
-        die("error $message need=$need val=" . json_encode($val));
-    echo "good $message\n";
+        error("error $message need=$need val=" . json_encode($val));
 }
 
 function assertNotEquals($message, $val, $need)
 {
     if ($val == $need)
-        die("error $message need=$need val=" . json_encode($val));
-    echo "good $message\n";
+        error("error $message need=$need val=" . json_encode($val));
 }
 
 function requestEquals($url, $params, $value_path, $need)
