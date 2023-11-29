@@ -20,7 +20,7 @@ function assertNotEquals($message, $val, $need)
 
 function requestEquals($url, $params, $value_path, $need)
 {
-    $response = http_post_json($url, $params);
+    $response = http_post($url, $params);
 
     $val = $response;
     foreach (explode(".", $value_path) as $param)
@@ -36,7 +36,7 @@ function requestEquals($url, $params, $value_path, $need)
 
 function requestNotEquals($url, $params, $value_path, $need)
 {
-    $response = http_post_json($url, $params);
+    $response = http_post($url, $params);
 
     $val = $response;
     foreach (explode(".", $value_path) as $param)
@@ -51,7 +51,7 @@ function requestNotEquals($url, $params, $value_path, $need)
 
 function requestCountEquals($url, $params, $value_path, $need)
 {
-    $response = http_post_json($url, $params);
+    $response = http_post($url, $params);
 
     $val = $response;
     foreach (explode(".", $value_path) as $param)

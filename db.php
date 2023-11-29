@@ -180,6 +180,8 @@ function get($param_name, $default, $description)
         $param_value = $_POST[$param_name];
     if ($param_value === null && isset($_SESSION[$param_name]))
         $param_value = $_SESSION[$param_name];
+    if ($param_value === null && isset($GLOBALS[$param_name]))
+        $param_value = $GLOBALS[$param_name];
     if ($param_value === null && isset($_COOKIE[$param_name]))
         $param_value = $_COOKIE[$param_name];
     if ($param_value === null && isset($_FILES[$param_name]))
@@ -436,19 +438,6 @@ function random_key($table_name, $key_name, $length = 11)
     return $random_key_id;
 }
 
-function http_json_put($url, $fields)
-{
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($fields));
-    $result = curl_exec($ch);
-    curl_close($ch);
-    return json_decode($result, true);
-}
-
 function to_utf8($mixed)
 {
     if (is_array($mixed)) {
@@ -462,33 +451,33 @@ function to_utf8($mixed)
 
 function http_post($url, $data, $headers = array())
 {
-    //if (strpos($url, "http://") === 0)
-    $url = "http://" . $url;
-    //if ($uencode)
+    if (strpos($url, "http") === -1)
+        $url = "http://$url";
     $data = to_utf8($data);
     $data_string = json_encode($data);
+    $headers_array = [];
+    foreach (array_merge($headers, [
+        'Content-Type' => 'application/json',
+        'Content-Length' => strlen($data_string)])
+             as $key => $value) {
+        $headers_array[] = "$key: $value";
+    }
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, POST);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($headers, array(
-            'Content-Type: application/json',
-            'Content-Length: ' . strlen($data_string))
-    ));
+    curl_setopt($ch, CURLOPT_HTTPHEADER,$headers_array);
     $result = curl_exec($ch);
+    $error = curl_error($ch);
     curl_close($ch);
-    return $result;
-}
-
-function http_post_json($url, $data, $headers = array())
-{
-    $result = http_post($url, $data, $headers);
+    if ($error != null)
+        return $error;
     return is_string($result) ? json_decode($result, true) : $result;
 }
 
 function http_get($url)
 {
-    if (strpos($url, "http://") === 0)
+    if (strpos($url, "http") === -1)
         $url = "http://" . $url;
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
@@ -526,36 +515,6 @@ function redirect($url, $params = array(), $params_in_url = true)
         header("Location: $url");
         die($redirect_script);
     }
-}
-
-function array_extend(array $a, array $b)
-{
-    foreach ($b as $k => $v)
-        $a[$k] = is_array($v) && isset($a[$k]) ?
-            array_extend(is_array($a[$k]) ?
-                $a[$k] : array(), $v) :
-            $v;
-    return $a;
-}
-
-function file_list_rec($dir, &$ignore_list, &$results = array())
-{
-    $files = scandir($dir);
-    foreach ($files as $key => $value) {
-        $path = realpath($dir . "/" . $value);
-        $path = str_replace("\\", "/", $path);
-        $ignore = false;
-        foreach ($ignore_list as $ignore_item)
-            $ignore = $ignore || (strpos($path, $ignore_item) !== false);
-        if ($ignore)
-            continue;
-        if (!is_dir($path)) {
-            $results[] = $path;
-        } else if ($value != "." && $value != "..") {
-            file_list_rec($path, $ignore_list, $results);
-        }
-    }
-    return $results;
 }
 
 function description($title)
