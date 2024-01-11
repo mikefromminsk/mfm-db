@@ -477,16 +477,17 @@ function http_post($url, $data, $headers = array())
 
 function http_get($url)
 {
-    if (strpos($url, "http") === -1)
-        $url = "http://" . $url;
     $ch = curl_init();
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, GET);
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $result = curl_exec($ch);
+    $error = curl_error($ch);
     curl_close($ch);
-    return $result;
+    if ($error != null)
+        return $error;
+    return is_string($result) ? json_decode($result, true) : $result;
 }
 
 function http_get_json($url)
