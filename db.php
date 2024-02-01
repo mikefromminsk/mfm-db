@@ -449,10 +449,22 @@ function to_utf8($mixed)
     return $mixed;
 }
 
+function getProtocol(){
+    if (isset($_SERVER['HTTPS']) &&
+        ($_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] == 1) ||
+        isset($_SERVER['HTTP_X_FORWARDED_PROTO']) &&
+        $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') {
+        return 'https';
+    }
+    else {
+        return 'http';
+    }
+}
+
 function http_post($url, $data, $headers = array())
 {
-    if (strpos($url, "http") === -1)
-        $url = "http://$url";
+    if (strpos($url, getProtocol()) === false)
+        $url = getProtocol() . "://$url";
     $data = to_utf8($data);
     $data_string = json_encode($data);
     $headers_array = [];
