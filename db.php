@@ -158,6 +158,14 @@ function array_to_map($array, $key)
     return $map;
 }
 
+function array_to_map_array($array, $key)
+{
+    $map = array();
+    foreach ($array as $item)
+        $map[$item[$key]][] = $item;
+    return $map;
+}
+
 function uencode($param_value)
 {
     return mysqli_real_escape_string($GLOBALS["conn"], $param_value);
@@ -228,7 +236,7 @@ function get_required($param_name, $default = null, $description = null)
         $GLOBALS["params"][$param_name]["required"] = true;
         return null;
     } else {
-        if ($param_value === null)
+        if ($param_value == null)
             error("$param_name is empty");
         return $param_value;
     }
