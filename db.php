@@ -39,7 +39,7 @@ function query($sql, $show_query = false)
     if ($show_query)
         error($sql);
     $success = false;
-    if (!isset($_GET["help"])) {
+    if (!isHelp()) {
         $success = $GLOBALS["conn"]->query($sql);
         if (!$success)
             error(mysqli_error($GLOBALS["conn"]));
@@ -171,9 +171,14 @@ function uencode($param_value)
     return mysqli_real_escape_string($GLOBALS["conn"], $param_value);
 }
 
+function isHelp()
+{
+    return isset($_GET["help"]) || isset($_POST["help"]);
+}
+
 function get($param_name, $default, $description)
 {
-    if (isset($_GET["help"])) {
+    if (isHelp()) {
         $GLOBALS["params"][$param_name]["name"] = $param_name;
         $GLOBALS["params"][$param_name]["type"] = "string";
         $GLOBALS["params"][$param_name]["required"] = false;
@@ -203,13 +208,17 @@ function get($param_name, $default, $description)
 
 function get_string($param_name, $default = null, $description = null)
 {
-    return get($param_name, $default, $description);
+    $param_value = get($param_name, $default, $description);
+    if (isHelp()) {
+        $GLOBALS["params"][$param_name]["type"] = "string";
+    }
+    return $param_value;
 }
 
 function get_int($param_name, $default = null, $description = null)
 {
     $param_value = get($param_name, $default, $description);
-    if (isset($_GET["help"])) {
+    if (isHelp()) {
         $GLOBALS["params"][$param_name]["type"] = "int";
         return null;
     } else {
@@ -223,7 +232,7 @@ function get_int($param_name, $default = null, $description = null)
 
 function get_int_array($param_name, $default = null, $description = null)
 {
-    if (isset($_GET["help"]))
+    if (isHelp())
         $GLOBALS["params"][$param_name]["type"] = "int_array";
     $arr = get($param_name, $default, $description);
     return $arr != null ? explode(",", $arr) : null;
@@ -232,7 +241,7 @@ function get_int_array($param_name, $default = null, $description = null)
 function get_required($param_name, $default = null, $description = null)
 {
     $param_value = get($param_name, $default, $description);
-    if (isset($_GET["help"])) {
+    if (isHelp()) {
         $GLOBALS["params"][$param_name]["required"] = true;
         return null;
     } else {
@@ -253,7 +262,7 @@ function get_path($param_name, $default = null, $description = null)
 function get_path_required($param_name, $default = null, $description = null)
 {
     $path = get_path($param_name, $default, $description);
-    if ($path === null)
+    if ($path === null && !isHelp())
         error("$param_name is empty");
     return $path;
 }
@@ -268,7 +277,7 @@ function get_required_uppercase($param_name, $default = null, $description = nul
 function get_int_required($param_name, $default = null, $description = null)
 {
     $param_value = get_int($param_name, $default, $description);
-    if (isset($_GET["help"])) {
+    if (isHelp()) {
         $GLOBALS["params"][$param_name]["required"] = true;
         return null;
     } else {
@@ -375,46 +384,47 @@ function json_encode_readable(&$result)
     return $r;
 }
 
-function getExceptionTraceAsString($exception)
-{
-    $rtn = "";
-    $count = 0;
-    foreach ($exception->getTrace() as $frame) {
-        $args = "";
-        if (isset($frame['args'])) {
-            $args = array();
-            foreach ($frame['args'] as $arg) {
-                if (is_string($arg)) {
-                    $args[] = "'" . $arg . "'";
-                } elseif (is_array($arg)) {
-                    $args[] = "Array";
-                } elseif (is_null($arg)) {
-                    $args[] = 'NULL';
-                } elseif (is_bool($arg)) {
-                    $args[] = ($arg) ? "true" : "false";
-                } elseif (is_object($arg)) {
-                    $args[] = get_class($arg);
-                } elseif (is_resource($arg)) {
-                    $args[] = get_resource_type($arg);
-                } else {
-                    $args[] = $arg;
-                }
-            }
-            $args = join(", ", $args);
-        }
-        $rtn .= sprintf("#%s %s(%s): %s(%s)\n",
-            $count,
-            $frame['file'],
-            $frame['line'],
-            $frame['function'],
-            $args);
-        $count++;
-    }
-    return $rtn;
-}
-
 function generateCallTrace()
 {
+
+    function getExceptionTraceAsString($exception)
+    {
+        $rtn = "";
+        $count = 0;
+        foreach ($exception->getTrace() as $frame) {
+            $args = "";
+            if (isset($frame['args'])) {
+                $args = array();
+                foreach ($frame['args'] as $arg) {
+                    if (is_string($arg)) {
+                        $args[] = "'" . $arg . "'";
+                    } elseif (is_array($arg)) {
+                        $args[] = "Array";
+                    } elseif (is_null($arg)) {
+                        $args[] = 'NULL';
+                    } elseif (is_bool($arg)) {
+                        $args[] = ($arg) ? "true" : "false";
+                    } elseif (is_object($arg)) {
+                        $args[] = get_class($arg);
+                    } elseif (is_resource($arg)) {
+                        $args[] = get_resource_type($arg);
+                    } else {
+                        $args[] = $arg;
+                    }
+                }
+                $args = join(", ", $args);
+            }
+            $rtn .= sprintf("#%s %s(%s): %s(%s)\n",
+                $count,
+                $frame['file'],
+                $frame['line'],
+                $frame['function'],
+                $args);
+            $count++;
+        }
+        return $rtn;
+    }
+
     $e = new Exception();
     $trace = explode("\n", getExceptionTraceAsString($e));
     array_shift($trace); //generateCallTrace
@@ -516,33 +526,52 @@ function http_get_json($url)
     return is_string($result) ? json_decode($result, true) : $result;
 }
 
-function redirect($url, $params = array(), $params_in_url = true)
+function description($description)
 {
-    if ($_SERVER['REQUEST_METHOD'] == 'GET') {
-        if ($params_in_url == true) {
-            $url_params = "";
-            foreach ($params as $key => $value)
-                $url_params .= "&" . urlencode($key) . "=" . urlencode($value);
-            if (strpos($url, "?") === false && $url_params != "")
-                $url_params[0] = "?";
-            $url .= $url_params;
-        }
-        $redirect_script = '<html><body><form id="redirect" action="' . $url . '" method="post">';
-        if ($params_in_url == false)
-            foreach ($params as $key => $value)
-                $redirect_script .= '<input type="hidden" name="' . htmlentities($key) . '" value="' . htmlentities(json_encode($value)) . '">';
-        $redirect_script .= '</form><script>document.getElementById("redirect").submit();</script></body></html>';
-        header("Content-type: text/html;charset=utf-8");
-        header("Location: $url");
-        die($redirect_script);
+    if (isHelp()) {
+        $response = [
+            "description" => $description,
+            "params" => $GLOBALS[params]
+        ];
+        die(json_encode_readable($response));
     }
 }
 
-function description($title)
+
+function assertEquals($message, $val, $need = 1)
 {
-    if (isset($_GET["help"])) {
-        $_GET["script_title"] = $title;
-        include_once "help.php";
-        die();
-    }
+    if ($val != $need)
+        error("error $message need=$need val=" . json_encode($val));
+}
+
+function requestEquals($url, $params, $value_path, $need = 1)
+{
+    $response = http_post($url, $params);
+
+    $val = $response;
+    foreach (explode(".", $value_path) as $param)
+        $val = $val[$param];
+
+    if ($val !== $need)
+        die("error $url $value_path=" . json_encode($val) . " need=$need\n" . json_encode($response));
+    echo "good $url\n";
+
+    return $response;
+}
+
+function requestCountEquals($url, $params, $value_path, $need)
+{
+    $response = http_post($url, $params);
+
+    $val = $response;
+    foreach (explode(".", $value_path) as $param)
+        $val = $val[$param];
+
+    $val = sizeof($val);
+
+    if ($val !== $need)
+        die("error $url $value_path=" . json_encode($val) . " need=$need\n" . json_encode($response));
+    echo "good $url\n";
+
+    return $response;
 }
