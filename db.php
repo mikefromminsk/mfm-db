@@ -544,7 +544,7 @@ function assertEquals($message, $val, $need = 1)
         error("error $message need=$need val=" . json_encode($val));
 }
 
-function requestEquals($url, $params, $value_path, $need = 1)
+function requestEquals($url, $params, $value_path, $need = 1, $stopIfError = true)
 {
     $response = http_post($url, $params);
 
@@ -552,9 +552,13 @@ function requestEquals($url, $params, $value_path, $need = 1)
     foreach (explode(".", $value_path) as $param)
         $val = $val[$param];
 
-    if ($val !== $need)
-        die("error $url $value_path=" . json_encode($val) . " need=$need\n" . json_encode($response));
-    echo "good $url\n";
+    if ($val !== $need) {
+        echo "error $url $value_path=" . json_encode($val) . " need=$need\n" . json_encode($response) . "\n";
+        if ($stopIfError)
+            die();
+    } else {
+        echo "good $url\n";
+    }
 
     return $response;
 }
