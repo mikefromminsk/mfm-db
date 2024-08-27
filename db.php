@@ -556,8 +556,6 @@ function requestEquals($url, $params, $value_path, $need = 1, $stopIfError = tru
         echo "error $url $value_path=" . json_encode($val) . " need=$need\n" . json_encode($response) . "\n";
         if ($stopIfError)
             die();
-    } else {
-        echo "good $url\n";
     }
 
     return $response;
@@ -575,7 +573,6 @@ function requestCountEquals($url, $params, $value_path, $need)
 
     if ($val !== $need)
         die("error $url $value_path=" . json_encode($val) . " need=$need\n" . json_encode($response));
-    echo "good $url\n";
 
     return $response;
 }
