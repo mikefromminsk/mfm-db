@@ -481,8 +481,8 @@ function getProtocol(){
 
 function http_post($url, $data, $headers = array())
 {
-    if (strpos($url, getProtocol()) === false)
-        $url = getProtocol() . "://$url";
+    if (strpos($url, "://") === false)
+        $url = "http://$url";
     $data = to_utf8($data);
     $data_string = json_encode($data);
     $headers_array = [];
@@ -552,10 +552,8 @@ function requestEquals($url, $params, $value_path, $need = 1, $stopIfError = tru
     foreach (explode(".", $value_path) as $param)
         $val = $val[$param];
 
-    if ($val !== $need) {
-        echo "error $url $value_path=" . json_encode($val) . " need=$need\n" . json_encode($response) . "\n";
-        if ($stopIfError)
-            die();
+    if ($val != $need) {
+        error("$url $value_path need=$need but answer is " . json_encode($response));
     }
 
     return $response;
