@@ -185,7 +185,7 @@ function get($param_name, $default, $description)
         $GLOBALS["params"][$param_name]["default"] = $default;
         $GLOBALS["params"][$param_name]["description"] = $description;
     }
-    // TODO add test on sql
+    // TODO add demo on sql
     $param_value = null;
     if (isset($_GET[$param_name]))
         $param_value = $_GET[$param_name];
@@ -201,6 +201,24 @@ function get($param_name, $default, $description)
         $param_value = $_FILES[$param_name];
     if ($param_value === null && isset(getallheaders()[$param_name]))
         $param_value = getallheaders()[$param_name];
+    if ($param_value === null) {
+        $inputJSON = file_get_contents('php://input');
+        if ($inputJSON != null) {
+            $inputParams = json_decode($inputJSON, true);
+            if ($inputParams !== null) {
+                $keys = explode('/', $param_name);
+                $param_value = $inputParams;
+                foreach ($keys as $key) {
+                    if (isset($param_value[$key])) {
+                        $param_value = $param_value[$key];
+                    } else {
+                        $param_value = null;
+                        break;
+                    }
+                }
+            }
+        }
+    }
     if ($param_value === null)
         return $default;
     return $param_value;
