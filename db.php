@@ -500,7 +500,7 @@ function getProtocol(){
 function http_post($url, $data, $headers = array())
 {
     if (strpos($url, "://") === false)
-        $url = "http://$url";
+        $url = "http://localhost/$url";
     $data = to_utf8($data);
     $data_string = json_encode($data);
     $headers_array = [];
@@ -562,7 +562,7 @@ function assertEquals($message, $val, $need = 1)
         error("error $message need=$need val=" . json_encode($val));
 }
 
-function requestEquals($url, $params, $value_path, $need = 1, $stopIfError = true)
+function requestEquals($url, $params = [], $value_path = success, $need = 1)
 {
     $response = http_post($url, $params);
 
