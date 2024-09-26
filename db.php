@@ -500,7 +500,7 @@ function getProtocol(){
 function http_post($url, $data, $headers = array())
 {
     if (strpos($url, "://") === false)
-        $url = "http://localhost/$url";
+        $url = "http://localhost$url";
     $data = to_utf8($data);
     $data_string = json_encode($data);
     $headers_array = [];

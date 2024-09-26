@@ -6,4 +6,4 @@ $db_user = "root";
 $db_pass = "root";
 
 const DEBUG = true;
-const WEB_SOCKETS_ENABLED = false;
+const WEB_SOCKETS_ENABLED = true;
