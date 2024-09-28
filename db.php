@@ -51,7 +51,7 @@ function select($sql, $show_query = false)
 {
     $result = query($sql, $show_query);
     if ($result->num_rows > 0) {
-        $rows = array();
+        $rows = [];
         while ($row = $result->fetch_assoc()) {
             $rows[] = $row;
         }
@@ -72,7 +72,7 @@ function scalar($sql, $show_query = false)
 function selectMapList($sql, $column, $show_query = false)
 {
     $table = select($sql, $show_query);
-    $res = array();
+    $res = [];
     foreach ($table as $row)
         $res[$row[$column]][] = $row;
     return $res;
@@ -82,7 +82,7 @@ function selectList($sql, $show_query = false)
 {
     $result = query($sql, $show_query);
     if ($result->num_rows > 0) {
-        $rows = array();
+        $rows = [];
         while ($row = $result->fetch_assoc()) {
             $rows[] = array_shift($row);
         }
@@ -138,21 +138,23 @@ function table_exist($table_name)
     return scalar("show tables like '$table_name'") != null;
 }
 
-function error($error_message)
+function error($error_message, $data = null)
 {
     $result["message"] = $error_message;
+    if ($data != null)
+        $result = array_merge($result, $data);
     if (DEBUG) {
         $stack = generateCallTrace();
         if ($stack != null)
             $result["stack"] = $stack;
     }
-    http_response_code(500); // INTERNAL SERVER ERROR
+    http_response_code(500);
     die(json_encode_readable($result));
 }
 
 function array_to_map($array, $key)
 {
-    $map = array();
+    $map = [];
     foreach ($array as $item)
         $map[$item[$key]] = $item;
     return $map;
@@ -160,7 +162,7 @@ function array_to_map($array, $key)
 
 function array_to_map_array($array, $key)
 {
-    $map = array();
+    $map = [];
     foreach ($array as $item)
         $map[$item[$key]][] = $item;
     return $map;
@@ -358,12 +360,13 @@ function object_properties_to_number(&$object)
     if (is_object($object) || is_array($object))
         foreach ($object as &$property)
             object_properties_to_number($property);
-    if (is_string($object) && is_doublee($object))
+    if (is_string($object) && is_double($object))
         $object = doubleval($object);
 }
 
 function json_encode_readable(&$result)
 {
+    if (DEBUG) return json_encode($result);
     //object_properties_to_number($result);
     $json = json_encode($result, JSON_UNESCAPED_UNICODE);
     //$json = preg_replace('/"([a-zA-Z]+[a-zA-Z0-9_]*)":/', '$1:', $json);
@@ -412,7 +415,7 @@ function generateCallTrace()
         foreach ($exception->getTrace() as $frame) {
             $args = "";
             if (isset($frame['args'])) {
-                $args = array();
+                $args = [];
                 foreach ($frame['args'] as $arg) {
                     if (is_string($arg)) {
                         $args[] = "'" . $arg . "'";
@@ -448,7 +451,7 @@ function generateCallTrace()
     array_shift($trace); //generateCallTrace
     array_shift($trace); //db_error
     array_pop($trace); // empty line
-    $result = array();
+    $result = [];
     for ($i = 0; $i < count($trace); $i++)
         $result[] = $trace[$i];
     return $result;
@@ -485,23 +488,23 @@ function to_utf8($mixed)
     return $mixed;
 }
 
-function getProtocol(){
+function getProtocol()
+{
     if (isset($_SERVER['HTTPS']) &&
         ($_SERVER['HTTPS'] == 'on' || $_SERVER['HTTPS'] == 1) ||
         isset($_SERVER['HTTP_X_FORWARDED_PROTO']) &&
         $_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https') {
         return 'https';
-    }
-    else {
+    } else {
         return 'http';
     }
 }
 
-function http_post($url, $data, $headers = array())
+function http_post($url, $data, $headers = [])
 {
     if (strpos($url, "://") === false)
         $url = "http://localhost$url";
-    $data = to_utf8($data);
+    //$data = to_utf8($data);
     $data_string = json_encode($data);
     $headers_array = [];
     foreach (array_merge($headers, [
@@ -514,7 +517,7 @@ function http_post($url, $data, $headers = array())
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, POST);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER,$headers_array);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers_array);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
     $result = curl_exec($ch);
@@ -573,7 +576,12 @@ function requestEquals($url, $params = [], $value_path = success, $need = 1)
         $val = $val[$param];
 
     if ($val != $need) {
-        error("$url $value_path need=$need but answer is " . json_encode($response));
+        error("need [$value_path]==$need", [
+            "url" => $url . "?" . implode("&", array_map(function ($key, $value) {
+                    return "$key=$value";
+                }, array_keys($params), $params)),
+            "response" => $response
+        ]);
     }
 
     return $response;
