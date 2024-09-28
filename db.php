@@ -515,6 +515,8 @@ function http_post($url, $data, $headers = array())
     curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER,$headers_array);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
     $result = curl_exec($ch);
     $error = curl_error($ch);
     curl_close($ch);
