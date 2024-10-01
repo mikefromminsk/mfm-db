@@ -3,7 +3,7 @@ error_reporting(1);
 
 header("Content-type: application/json;charset=utf-8");
 
-require_once $_SERVER["DOCUMENT_ROOT"] . "/db/properties.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/mfm-db/properties.php";
 
 // move create mysqli into properties.php
 if ($db_name == null || $db_user == null || $db_pass == null)
