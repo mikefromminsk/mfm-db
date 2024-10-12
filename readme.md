@@ -36,5 +36,5 @@ The script uses several global variables:
 
 - `$mysql_conn`: The `mysqli` connection object.
 - `$host_name`: The host name for the database connection.
-- `$GLOBALS["conn"]`: A reference to the `mysqli` connection object.
+- `$GLOBALS[conn]`: A reference to the `mysqli` connection object.
 - `$GLOBALS["params"]`: An associative array of request parameters.
