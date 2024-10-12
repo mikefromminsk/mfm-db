@@ -3,11 +3,9 @@
 include_once $_SERVER["DOCUMENT_ROOT"] . "/mfm-db/params.php";
 include_once $_SERVER["DOCUMENT_ROOT"] . "/mfm-db/requests.php";
 
-getServerParams("database", ["db_name", "db_user", "db_pass"]);
-
-$db_name = get_required(db_name);
-$db_user = get_required(db_user);
-$db_pass = get_required(db_pass);
+$db_name = get_config_required(db_name);
+$db_user = get_config_required(db_user);
+$db_pass = get_config_required(db_pass);
 
 $mysql_conn = $GLOBALS[conn];
 if ($mysql_conn == null)

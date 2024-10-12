@@ -26,13 +26,12 @@ function error($error_message, $data = null)
             $result["stack"] = $stack;
     }
     http_response_code(500);
-    die(json_encode_readable($result));
+    die(json_encode($result, JSON_PRETTY_PRINT));
 }
 
 
 function generateCallTrace()
 {
-
     function getExceptionTraceAsString($exception)
     {
         $rtn = "";
@@ -82,47 +81,6 @@ function generateCallTrace()
     return $result;
 }
 
-function json_encode_readable(&$result)
-{
-    if (DEBUG) return json_encode($result);
-    //object_properties_to_number($result);
-    $json = json_encode($result, JSON_UNESCAPED_UNICODE);
-    //$json = preg_replace('/"([a-zA-Z]+[a-zA-Z0-9_]*)":/', '$1:', $json);
-    $tc = 0;        //tab count
-    $r = '';        //result
-    $q = false;     //quotes
-    $t = "\t";      //tab
-    $nl = "\n";     //new line
-    for ($i = 0; $i < strlen($json); $i++) {
-        $c = $json[$i];
-        if ($c == '"' && $json[$i - 1] != '\\') $q = !$q;
-        if ($q) {
-            $r .= $c;
-            continue;
-        }
-        switch ($c) {
-            case '{':
-            case '[':
-                $r .= $c . $nl . str_repeat($t, ++$tc);
-                break;
-            case '}':
-            case ']':
-                $r .= $nl . str_repeat($t, --$tc) . $c;
-                break;
-            case ',':
-                $r .= $c;
-                if ($json[$i + 1] != '{' && $json[$i + 1] != '[') $r .= $nl . str_repeat($t, $tc);
-                break;
-            case ':':
-                $r .= $c . ' ';
-                break;
-            default:
-                $r .= $c;
-        }
-    }
-    return $r;
-}
-
 function description($description)
 {
     if (isHelp()) {
@@ -130,7 +88,7 @@ function description($description)
             "description" => $description,
             "params" => $GLOBALS[params]
         ];
-        die(json_encode_readable($response));
+        die(json_encode($response, JSON_PRETTY_PRINT));
     }
 }
 
@@ -293,25 +251,33 @@ function getDomain()
     return explode("/", scriptPath())[0];
 }
 
-function getServerParams($config_name, $params)
+// TODO add config filename for separate config accesses
+function get_config_required($config_param_name)
 {
-    $properties_path = $_SERVER["DOCUMENT_ROOT"] . "/../$config_name.php";
+    if ($GLOBALS[$config_param_name] != null)
+        return $GLOBALS[$config_param_name];
+
+    $properties_path = $_SERVER["DOCUMENT_ROOT"] . "/../config.php";
     include_once $properties_path;
 
     $vars = get_defined_vars();
-    foreach ($params as $param) {
-        if ($vars[$param] == null){
-            $save_properties = true;
-        } else {
-            $GLOBALS[$param] = $vars[$param];
-        }
+
+    foreach ($vars as $param => $value) {
+        $GLOBALS[$param] = $value;
     }
 
-    if ($save_properties == true) {
-        $properties = "<?php\n";
-        foreach ($params as $param) {
-            $properties .= "\$$param = \"" . get_required($param) . "\";\n";
+    if ($vars[$config_param_name] == null) {
+        onlyInDebug();
+        $value = get_required($config_param_name);
+        if (!file_exists($properties_path)) {
+            $properties = "<?php";
+        } else {
+            $properties = file_get_contents($properties_path);
         }
+        $properties .= "\n\$$config_param_name = \"$value\";";
         file_put_contents($properties_path, $properties);
+        return $value;
+    } else {
+        return $vars[$config_param_name];
     }
 }
