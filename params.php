@@ -246,6 +246,11 @@ function scriptPath()
     return $path;
 }
 
+function scriptName()
+{
+    return basename($_SERVER["SCRIPT_NAME"], ".php");
+}
+
 function getDomain()
 {
     return explode("/", scriptPath())[0];
