@@ -98,7 +98,7 @@ function requestEquals($url, $params = [], $value_path = success, $need = 1)
         ]);
     }
 
-    return $response;
+    return true;
 }
 
 function requestCountEquals($url, $params, $value_path, $need)
