@@ -237,7 +237,7 @@ function onlyInDebug()
         error("cannot use not in debug session");
 }
 
-function scriptPath()
+function getScriptPath()
 {
     $path = $_SERVER["SCRIPT_NAME"];
     $path = str_replace("\\", "/", $path);
@@ -246,14 +246,14 @@ function scriptPath()
     return $path;
 }
 
-function scriptName()
+function getScriptName()
 {
     return basename($_SERVER["SCRIPT_NAME"], ".php");
 }
 
 function getDomain()
 {
-    return explode("/", scriptPath())[0];
+    return explode("/", getScriptPath())[0];
 }
 
 // TODO add config filename for separate config accesses
