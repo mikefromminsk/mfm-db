@@ -1,7 +1,5 @@
 <?php
 
-use PHPMailer\Exception;
-
 error_reporting(1);
 
 header("Content-type: application/json;charset=utf-8");
