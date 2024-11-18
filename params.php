@@ -161,20 +161,12 @@ function get_int($param_name, $default = null, $description = null)
         $GLOBALS["params"][$param_name]["type"] = "int";
         return null;
     } else {
-        if ($param_value == null)
+        if ($param_value === null)
             return null;
         if (!is_numeric($param_value))
             error("$param_name must be int");
         return doubleval($param_value);
     }
-}
-
-function get_int_array($param_name, $default = null, $description = null)
-{
-    if (isHelp())
-        $GLOBALS["params"][$param_name]["type"] = "int_array";
-    $arr = get($param_name, $default, $description);
-    return $arr != null ? explode(",", $arr) : null;
 }
 
 function get_required($param_name, $default = null, $description = null)
@@ -184,7 +176,7 @@ function get_required($param_name, $default = null, $description = null)
         $GLOBALS["params"][$param_name]["required"] = true;
         return null;
     } else {
-        if ($param_value == null)
+        if ($param_value === null)
             error("$param_name is empty");
         return $param_value;
     }
