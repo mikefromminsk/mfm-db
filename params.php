@@ -35,7 +35,6 @@ function generateCallTrace()
     function getExceptionTraceAsString($exception)
     {
         $rtn = "";
-        $count = 0;
         foreach ($exception->getTrace() as $frame) {
             $args = "";
             if (isset($frame['args'])) {
@@ -59,13 +58,13 @@ function generateCallTrace()
                 }
                 $args = join(", ", $args);
             }
-            $rtn .= sprintf("#%s %s(%s): %s(%s)\n",
-                $count,
+            $frame['file'] = str_replace("\\", "/", $frame['file']);
+            $frame['file'] = str_replace($_SERVER['DOCUMENT_ROOT'], "", $frame['file']);
+            $rtn .= sprintf("%s(%s): %s(%s)\n",
                 $frame['file'],
                 $frame['line'],
                 $frame['function'],
                 $args);
-            $count++;
         }
         return $rtn;
     }
