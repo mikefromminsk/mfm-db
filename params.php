@@ -228,6 +228,12 @@ function onlyInDebug()
         error("cannot use not in debug session");
 }
 
+function onlyInProd()
+{
+    if (DEBUG)
+        error("cannot use not in prod session");
+}
+
 function getScriptPath()
 {
     $path = $_SERVER["SCRIPT_NAME"];
