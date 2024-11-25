@@ -107,14 +107,14 @@ function get($param_name, $default, $description)
     }
     // TODO add demo on sql
     $param_value = null;
-    if (isset($_GET[$param_name]))
+    if (isset($GLOBALS[$param_name]))
+        $param_value = $GLOBALS[$param_name];
+    if ($param_value === null && isset($_GET[$param_name]))
         $param_value = $_GET[$param_name];
     if ($param_value === null && isset($_POST[$param_name]))
         $param_value = $_POST[$param_name];
     if ($param_value === null && isset($_SESSION[$param_name]))
         $param_value = $_SESSION[$param_name];
-    if ($param_value === null && isset($GLOBALS[$param_name]))
-        $param_value = $GLOBALS[$param_name];
     if ($param_value === null && isset($_COOKIE[$param_name]))
         $param_value = $_COOKIE[$param_name];
     if ($param_value === null && isset($_FILES[$param_name]))
