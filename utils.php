@@ -219,3 +219,12 @@ function random_key($table_name, $key_name, $length = 11)
     } while ($key_exist != 0);
     return $random_key_id;
 }
+
+function str_between($string, $start, $end){
+    $string = ' ' . $string;
+    $ini = strpos($string, $start);
+    if ($ini == 0) return '';
+    $ini += strlen($start);
+    $len = strpos($string, $end, $ini) - $ini;
+    return substr($string, $ini, $len);
+}
