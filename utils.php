@@ -211,11 +211,11 @@ function random_id($length = 11)
     return doubleval($random_long);
 }
 
-function random_key($table_name, $key_name, $length = 11)
+function random_key($table_name, $column_name, $length = 11)
 {
     do {
         $random_key_id = random_id($length);
-        $key_exist = scalar("select count(*) from `$table_name` where $key_name = $random_key_id");
+        $key_exist = scalar("select count(*) from `$table_name` where $column_name = $random_key_id");
     } while ($key_exist != 0);
     return $random_key_id;
 }
