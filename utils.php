@@ -200,18 +200,19 @@ function object_properties_to_number(&$object)
 }
 
 
-function random_id($length = 11)
+function random_id($length = 9)
 {
-    //max mysqk bigint = 20 chars
+    //max mysql int = 20 chars
+    //max mysql bigint = 20 chars
     //max js int = 16 chars
     //max php double without E = 12 chars
     $random_long = mt_rand(1, 9);
-    for ($i = 0; $i < $length; $i++)
+    for ($i = 0; $i < $length - 1; $i++)
         $random_long .= mt_rand(0, 9);
     return doubleval($random_long);
 }
 
-function random_key($table_name, $column_name, $length = 11)
+function random_key($table_name, $column_name, $length = 9)
 {
     do {
         $random_key_id = random_id($length);
