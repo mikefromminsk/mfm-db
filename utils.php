@@ -231,7 +231,7 @@ function str_between($string, $start, $end)
     return substr($string, $ini, $len);
 }
 
-function showResponse($response)
+function showResponse($response = [])
 {
     if ($response == null)
         $response = [];
@@ -241,7 +241,7 @@ function showResponse($response)
     die();
 }
 
-function commit($response)
+function commit($response = [])
 {
     if (function_exists(commitData)) commitData();
     if (function_exists(commitTokens)) commitTokens();
