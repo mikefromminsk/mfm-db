@@ -221,11 +221,30 @@ function random_key($table_name, $column_name, $length = 9)
     return $random_key_id;
 }
 
-function str_between($string, $start, $end){
+function str_between($string, $start, $end)
+{
     $string = ' ' . $string;
     $ini = strpos($string, $start);
     if ($ini == 0) return '';
     $ini += strlen($start);
     $len = strpos($string, $end, $ini) - $ini;
     return substr($string, $ini, $len);
+}
+
+function showResponse($response)
+{
+    if ($response == null)
+        $response = [];
+    if ($response[success] == null)
+        $response[success] = true;
+    echo json_encode($response, JSON_PRETTY_PRINT);
+    die();
+}
+
+function commit($response)
+{
+    if (function_exists(commitData)) commitData();
+    if (function_exists(commitTokens)) commitTokens();
+    if (function_exists(commitAnalytics)) commitAnalytics();
+    showResponse($response);
 }
