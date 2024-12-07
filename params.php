@@ -106,20 +106,20 @@ function get($param_name, $default, $description)
         $GLOBALS["params"][$param_name]["description"] = $description;
     }
     // TODO add demo on sql
-    $param_value = null;
-    if (isset($GLOBALS[$param_name]))
+    $param_value = get_defined_constants(true)["user"][$param_name];
+    if ($param_value === null)
         $param_value = $GLOBALS[$param_name];
-    if ($param_value === null && isset($_GET[$param_name]))
+    if ($param_value === null)
         $param_value = $_GET[$param_name];
-    if ($param_value === null && isset($_POST[$param_name]))
+    if ($param_value === null)
         $param_value = $_POST[$param_name];
-    if ($param_value === null && isset($_SESSION[$param_name]))
+    if ($param_value === null)
         $param_value = $_SESSION[$param_name];
-    if ($param_value === null && isset($_COOKIE[$param_name]))
+    if ($param_value === null)
         $param_value = $_COOKIE[$param_name];
-    if ($param_value === null && isset($_FILES[$param_name]))
+    if ($param_value === null)
         $param_value = $_FILES[$param_name];
-    if ($param_value === null && isset(getallheaders()[$param_name]))
+    if ($param_value === null)
         $param_value = getallheaders()[$param_name];
     if ($param_value === null) {
         $inputJSON = file_get_contents('php://input');

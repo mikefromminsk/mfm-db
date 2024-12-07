@@ -248,3 +248,8 @@ function commit($response = [])
     if (function_exists(commitAnalytics)) commitAnalytics();
     showResponse($response);
 }
+
+function str_starts_with($haystack, $needle)
+{
+    return substr($haystack, 0, strlen($needle)) === $needle;
+}
