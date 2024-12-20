@@ -25,24 +25,15 @@ function getProtocol()
 }
 
 
-function http_post($url, $data, $headers = [])
+function http_post($url, $data)
 {
     if (strpos($url, "://") === false)
         $url = "http://localhost$url";
     //$data = to_utf8($data);
-    $data_string = json_encode($data);
-    $headers_array = [];
-    foreach (array_merge($headers, [
-        'Content-Type' => 'application/json',
-        'Content-Length' => strlen($data_string)])
-             as $key => $value) {
-        $headers_array[] = "$key: $value";
-    }
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, POST);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers_array);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
     $result = curl_exec($ch);
@@ -74,21 +65,12 @@ function http_get_json($url)
     return is_string($result) ? json_decode($result, true) : $result;
 }
 
-
-function assertEquals($message, $val, $need = 1)
+function requestEquals($url, $params = [], $value_path = success, $need = true)
 {
-    if ($val != $need)
-        error("error $message need=$need val=" . json_encode($val));
-}
-
-function requestEquals($url, $params = [], $value_path = success, $need = 1)
-{
-    $response = http_post($url, $params);
-
+    $response = http_post(":8014$url", $params);
     $val = $response;
     foreach (explode(".", $value_path) as $param)
         $val = $val[$param];
-
     if ($val != $need) {
         error("need [$value_path]==$need", [
             "url" => $url . "?" . implode("&", array_map(function ($key, $value) {
@@ -97,37 +79,5 @@ function requestEquals($url, $params = [], $value_path = success, $need = 1)
             "response" => $response
         ]);
     }
-
-    return true;
-}
-
-function requestCountEquals($url, $params, $value_path, $need)
-{
-    $response = http_post($url, $params);
-
-    $val = $response;
-    foreach (explode(".", $value_path) as $param)
-        $val = $val[$param];
-
-    $val = sizeof($val);
-
-    if ($val !== $need)
-        die("error $url $value_path=" . json_encode($val) . " need=$need\n" . json_encode($response));
-
     return $response;
-}
-
-
-function postWithGas($url, $params)
-{
-    $domain = get_required(gas_domain);
-    $address = get_required(address);
-    $password = get_required(password);
-    $account = requestAccount($domain, $address);
-    $key = tokenKey($domain, $address, $password, $account[prev_key]);
-    $next_hash = tokenNextHash($domain, $address, $password, $key);
-    requestEquals($url, array_merge($params, [
-        gas_address => $GLOBALS[address],
-        gas_pass => "$key:$next_hash",
-    ]));
 }
