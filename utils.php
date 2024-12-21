@@ -1,6 +1,6 @@
 <?php
 require_once $_SERVER["DOCUMENT_ROOT"] . "/mfm-db/params.php";
-require_once $_SERVER["DOCUMENT_ROOT"] . "/mfm-db/requests.php";
+require_once $_SERVER["DOCUMENT_ROOT"] . "/mfm-db/requests";
 
 $db_name = get_config_required(db_name);
 $db_user = get_config_required(db_user);

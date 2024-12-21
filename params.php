@@ -245,7 +245,7 @@ function getScriptPath()
 
 function getScriptName()
 {
-    return basename($_SERVER["SCRIPT_NAME"], ".php");
+    return basename($_SERVER["SCRIPT_NAME"], "");
 }
 
 function getDomain()
@@ -259,7 +259,7 @@ function get_config_required($config_param_name)
     if ($GLOBALS[$config_param_name] != null)
         return $GLOBALS[$config_param_name];
 
-    $properties_path = $_SERVER[DOCUMENT_ROOT] . "/../config.php";
+    $properties_path = $_SERVER[DOCUMENT_ROOT] . "/../config";
     include_once $properties_path;
 
     $vars = get_defined_vars();
