@@ -25,7 +25,7 @@ function getProtocol()
 }
 
 
-function http_post($url, $data)
+function post_data($url, $data)
 {
     if (strpos($url, "://") === false)
         $url = "http://localhost$url";
@@ -44,11 +44,39 @@ function http_post($url, $data)
     return is_string($result) ? json_decode($result, true) : $result;
 }
 
-function http_get($url)
+
+function post_json($url, $data)
 {
-    $ch = curl_init();
+    if (strpos($url, "://") === false)
+        $url = "http://localhost$url";
+    $data_string = json_encode($data);
+    $headers_array = [];
+    foreach ([
+        'Content-Type' => 'application/json',
+        'Content-Length' => strlen($data_string)]
+             as $key => $value) {
+        $headers_array[] = "$key: $value";
+    }
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, POST);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers_array);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $result = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
+    if ($error != null)
+        return $error;
+    return is_string($result) ? json_decode($result, true) : $result;
+}
+
+function get_json($url)
+{
+    if (strpos($url, "://") === false)
+        $url = "http://localhost$url";
+    $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_CUSTOMREQUEST, GET);
-    curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $result = curl_exec($ch);
@@ -59,15 +87,25 @@ function http_get($url)
     return is_string($result) ? json_decode($result, true) : $result;
 }
 
-function http_get_json($url)
+function get_file($url)
 {
-    $result = http_get($url);
-    return is_string($result) ? json_decode($result, true) : $result;
+    if (strpos($url, "://") === false)
+        $url = "http://localhost$url";
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, GET);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $result = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
+    if ($error != null)
+        return $error;
+    return $result;
 }
 
 function requestEquals($url, $params = [], $value_path = success, $need = true)
 {
-    $response = http_post(":8014$url", $params);
+    $response = post_data(":8014$url", $params);
     $val = $response;
     foreach (explode(".", $value_path) as $param)
         $val = $val[$param];
